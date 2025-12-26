@@ -22,6 +22,9 @@ Productivity tool? Emotional support robot? Procrastination enabler? Yes.
 The robot rotates on a large bearing with a 3mm steel shaft running through its center, connecting base to body. A hollow slip ring wraps around this shaft, passing USB power from the stationary base to the spinning upper body—unlimited rotation, no tangled wires, maximum drama.
 
 The base motor drives through a 1:34 gearbox for smooth, theatrical rotations.
+<img width="800" height="624" alt="internal cut" src="https://github.com/user-attachments/assets/b57c43de-1bd4-44ad-8eb7-b1036d8c02ab" />
+
+
 
 ### The Wave
 
@@ -31,6 +34,12 @@ Both arms use tiny stepper motors with integrated worm gears, giving them that s
 
 Three TMC2209 stepper drivers live on a custom PCB, commanded by an ESP32-C6. The firmware runs a timeline-based animation system—choreographed sequences of motor movements and facial expressions, all scheduled down to the millisecond.
 
+![Desk robot (2)](https://github.com/user-attachments/assets/aef4f20e-cfd0-488d-808b-e4010ad919cb)
+
+![Desk robot (7)](https://github.com/user-attachments/assets/5db32d9b-cd12-439d-aecb-3df1c374eb85)
+
+
+
 ### The Awareness
 
 A radar module hides behind the face, detecting humans up to 8 meters away. When you approach, it wakes. When you leave, it sulks. The radar's wide spread means no sneaking past unnoticed.
@@ -38,3 +47,4 @@ A radar module hides behind the face, detecting humans up to 8 meters away. When
 ### The Face
 
 An Adafruit Charlieplexed LED matrix—warm yellow, delightfully retro. This display started everything. I saw its glow, imagined a tiny robot companion with emotions rendered in chunky pixels, and the rest became inevitable.
+
