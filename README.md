@@ -1,5 +1,8 @@
 # Desk Robot Companion
 
+![IMG_5923](https://github.com/user-attachments/assets/427c614b-8066-4b08-952f-eb4805b5ad16)
+
+
 
 ## What is it for?
 
@@ -8,6 +11,12 @@ As with all my projects, I build first and ask questions later. Now that it exis
 It detects when I'm present, judges me silently with its LED face, and occasionally spins around dramatically for no reason.
 
 Productivity tool? Emotional support robot? Procrastination enabler? Yes.
+
+
+Due to the polarizing film with diffuser, the screen is notoriously difficult to capture on camera. It looks far better in person than in any photo here.
+The low-ISO image below better represents the real appearance. I love this retro yellow vibe. Each pixel transforms from a point into a vertical rectangle, an artifact of two polarizing films cut at an angle. It gives the face a warmth and texture that photos simply cannot convey.
+
+![IMG_5931](https://github.com/user-attachments/assets/2dc9bba1-147f-4863-be73-f2a9dac1b311)
 
 ## Project Structure
 
@@ -47,4 +56,5 @@ A radar module hides behind the face, detecting humans up to 8 meters away. When
 ### The Face
 
 An Adafruit Charlieplexed LED matrix—warm yellow, delightfully retro. This display started everything. I saw its glow, imagined a tiny robot companion with emotions rendered in chunky pixels, and the rest became inevitable.
+
 
