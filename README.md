@@ -1,6 +1,7 @@
 # Desk Robot Companion
 
-![IMG_5923](https://github.com/user-attachments/assets/427c614b-8066-4b08-952f-eb4805b5ad16)
+
+https://github.com/user-attachments/assets/8fcd8911-27cb-44df-8bd5-095555234ec2
 
 
 
@@ -56,5 +57,6 @@ A radar module hides behind the face, detecting humans up to 8 meters away. When
 ### The Face
 
 An Adafruit Charlieplexed LED matrix—warm yellow, delightfully retro. This display started everything. I saw its glow, imagined a tiny robot companion with emotions rendered in chunky pixels, and the rest became inevitable.
+
 
 
