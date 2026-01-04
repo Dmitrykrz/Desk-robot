@@ -58,5 +58,12 @@ A radar module hides behind the face, detecting humans up to 8 meters away. When
 
 An Adafruit Charlieplexed LED matrix—warm yellow, delightfully retro. This display started everything. I saw its glow, imagined a tiny robot companion with emotions rendered in chunky pixels, and the rest became inevitable.
 
+### The Dashboard
+The robot is controlled via dashboard built on Node-red. It can be used for manual motor control and for creating face animations
+
+<img width="1614" height="972" alt="image" src="https://github.com/user-attachments/assets/276fc556-0e62-4fe6-8e22-8b33a3684c2f" />
+
+
+
 
 
