@@ -13,7 +13,7 @@
 #include <Korzhenevskiy_tick_tack_2.h>
 #include <Korzhenevskiy_utils.h>
 #include "secrets.h"
-#include <images.h>
+#include "Radar.h"
 #include <math.h>
 #include "WiFi.h"
 #include <WiFiClient.h>
@@ -40,12 +40,6 @@
 #define motor_arm_right_dir 2 // correct but not tested
 #define motor_arm_right_step 3 // correct but not tested
 #define motor_arm_right_enable 4 // correct but not tested
-
-
-constexpr int SENSOR_RX_PIN = 1;
-constexpr int SENSOR_TX_PIN = -1;
-constexpr long SENSOR_BAUD_RATE = 115200;
-HardwareSerial& sensorSerial = Serial1;
 
 // ===================================================================================
 // MOTOR CONFIGURATION
@@ -80,12 +74,8 @@ String globalConfigStatus = "";
 // RADAR SENSOR
 // ===================================================================================
 
-int rangeValue = 0;
-#define HISTORY_SIZE 100
-bool humanPresentHistory[HISTORY_SIZE] = {false};
-int historyIndex = 0;
-bool humanPresent_debounced = false;
-bool humanPresent_old = false;
+Radar radar(1, Serial1);
+bool radar_debounced_old = false;
 
 // ===================================================================================
 // NETWORK
@@ -118,13 +108,21 @@ unsigned long animationStartTime = 0;
 bool animationRunning = false;
 
 // ===================================================================================
+// RADAR TIMERS
+// ===================================================================================
+void publish_radar_status();
+void publish_radar_range();
+Korzhenevskiy_tick_tack_2 timer_radar(publish_radar_status, 10000);
+Korzhenevskiy_tick_tack_2 timer_radar_range(publish_radar_range, 1000);
+
+// ===================================================================================
 // FUNCTION DECLARATIONS
 // ===================================================================================
 
 void callback(char* topic, byte* payload, unsigned int length);
-void check_radar();
 void draw_image(const int image[8][16]);
-void lookaround();
+
+
 void read_storage_for_config();
 void publish_config_status();
 void save_config_to_preferences(String key, int value);
@@ -137,41 +135,7 @@ void parseAnimation(JsonArray arr);
 void tickAnimation();
 void stopAnimation();
 
-// ===================================================================================
-// LOOKAROUND BEHAVIOR
-// ===================================================================================
 
-boolean radar_enabled = false;
-boolean radar_enabled_temp = radar_enabled;
-
-int lookaround_distance = 200;
-int lookaround_status = 0;
-
-Korzhenevskiy_tick_tack_2 timer_lookaround(lookaround, 15000);
-Korzhenevskiy_tick_tack_2 timer_delay(lookaround, 4000);
-
-void lookaround() {
-  if (lookaround_status == 0) {
-    radar_enabled_temp = false;
-    stepper_base.moveTo(lookaround_distance);
-    draw_image(lookleft);
-    lookaround_status++;
-    timer_delay.start();
-  }
-  else if (lookaround_status == 1) {
-    stepper_base.moveTo(-lookaround_distance);
-    draw_image(lookright);
-    lookaround_status++;
-    timer_delay.start();
-  }
-  else if (lookaround_status == 2) {
-    stepper_base.moveTo(0);
-    draw_image(smileImage);
-    lookaround_status = 0;
-    timer_delay.stop();
-    radar_enabled_temp = radar_enabled;
-  }
-}
 
 // ===================================================================================
 // CONFIG STORAGE FUNCTIONS
@@ -215,46 +179,10 @@ void read_storage_for_config() {
   stepper_right.setMaxSpeed(motor_right_speed);
   stepper_right.setAcceleration(motor_right_accel);
   
-  int lookaround_delay_val;
-  if (preferences.isKey("lookaround_delay")) {
-    lookaround_delay_val = preferences.getInt("lookaround_delay", 15000);
-    String msg = "lookaround_delay loaded from storage: " + String(lookaround_delay_val);
-    Serial.println(msg);
-    globalConfigStatus += msg + "; ";
-  } else {
-    lookaround_delay_val = 15000;
-    String msg = "lookaround_delay not in storage, loaded default value: 15000";
-    Serial.println(msg);
-    globalConfigStatus += msg + "; ";
-  }
-  timer_lookaround.setinterval(lookaround_delay_val);
   
-  if (preferences.isKey("lookaround_distance")) {
-    lookaround_distance = preferences.getInt("lookaround_distance", 200);
-    String msg = "lookaround_distance loaded from storage: " + String(lookaround_distance);
-    Serial.println(msg);
-    globalConfigStatus += msg + "; ";
-  } else {
-    lookaround_distance = 200;
-    String msg = "lookaround_distance not in storage, loaded default value: 200";
-    Serial.println(msg);
-    globalConfigStatus += msg + "; ";
-  }
   
-  boolean lookaround_enable = false;
-  if (preferences.isKey("lookaround_enable")) {
-    lookaround_enable = preferences.getBool("lookaround_enable", false);
-    String msg = "lookaround_enable loaded from storage: " + String(lookaround_enable ? "true" : "false");
-    Serial.println(msg);
-    globalConfigStatus += msg + "; ";
-  } else {
-    lookaround_enable = false;
-    String msg = "lookaround_enable not in storage, loaded default value: false";
-    Serial.println(msg);
-    globalConfigStatus += msg + "; ";
-  }
   
-  timer_lookaround.stop();
+  
   
   preferences.end();
   
@@ -655,6 +583,32 @@ void stopAnimation() {
 }
 
 // ===================================================================================
+// RADAR PUBLISH FUNCTIONS
+// ===================================================================================
+
+void publish_radar_status() {
+  bool current_state = radar.check_debounced();
+  String message = current_state ? "{\"radar\": true}" : "{\"radar\": false}";
+  client.publish(MQTTChannelToPublish, message.c_str());
+  Serial.print("Radar status published: ");
+  Serial.println(current_state ? "true" : "false");
+}
+
+void publish_radar_range() {
+  bool human_present = radar.check_debounced();
+
+  String message;
+  if (human_present) {
+    int range = radar.get_range();
+    message = "{\"radar_range\": " + String(range) + "}";
+  } else {
+    message = "{\"radar_range\": null}";
+  }
+
+  client.publish(MQTTChannelToPublish, message.c_str());
+}
+
+// ===================================================================================
 // SETUP
 // ===================================================================================
 
@@ -678,8 +632,10 @@ void setup() {
   digitalWrite(motor_arm_right_enable, HIGH);
   
   Serial.begin(115200);
-  sensorSerial.begin(SENSOR_BAUD_RATE, SERIAL_8N1, SENSOR_RX_PIN, SENSOR_TX_PIN);
-  
+
+  // Initialize radar
+  radar.begin(115200);
+
   Wire.begin(7, 6);
   delay(100);
   
@@ -713,8 +669,12 @@ void setup() {
   stepper_right.setCurrentPosition(0);
   
   publish_config_status();
-  
-  draw_image(smileImage);
+
+  // Start radar timers
+  timer_radar.start();
+  timer_radar_range.start();
+
+  loadImageFromPreferences("smile1");
 }
 
 // ===================================================================================
@@ -742,24 +702,17 @@ void loop() {
   
   // Tick timers
   Korzhenevskiy_tick_tack_2::mass_tick();
-  
-  // Check radar if enabled
-  if ((radar_enabled) && (radar_enabled_temp)) check_radar();
-  
-  // Human detection state changes
-  if ((humanPresent_debounced) && (!humanPresent_old)) {
-    draw_image(smileImage);
-    client.publish(MQTTChannelToPublish, "{\"human\": 1}");
-    Serial.println("human detected");
+
+  // Update radar continuously
+  radar.update();
+
+  // Immediate publish when radar detects presence (asymmetric behavior)
+  bool radar_debounced_current = radar.check_debounced();
+  if (radar_debounced_current && !radar_debounced_old) {
+    client.publish(MQTTChannelToPublish, "{\"radar\": true}");
+    Serial.println("Radar: Human detected (immediate)");
   }
-  
-  if ((!humanPresent_debounced) && (humanPresent_old)) {
-    ledmatrix.clear();
-    client.publish(MQTTChannelToPublish, "{\"human\": 0}");
-    Serial.println("human is gone");
-  }
-  
-  humanPresent_old = humanPresent_debounced;
+  radar_debounced_old = radar_debounced_current;
   
   // MQTT reconnection
   if (!client.connected()) {
@@ -856,49 +809,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (doc.containsKey("image_delete")) {
     String imageName = doc["image_delete"].as<String>();
     deleteImageFromPreferences(imageName);
-  }
-  
-  // ---------------------------------------------------------------------------------
-  // RADAR CONTROL
-  // ---------------------------------------------------------------------------------
-  if (doc.containsKey("radarenable")) {
-    int radarValue = doc["radarenable"];
-    radar_enabled = (radarValue == 1);
-    Serial.print("Radar enabled set to: ");
-    Serial.println(radar_enabled ? "true" : "false");
-  }
-  
-  // ---------------------------------------------------------------------------------
-  // LOOKAROUND CONTROL
-  // ---------------------------------------------------------------------------------
-  if (doc.containsKey("lookaround_enable")) {
-    int Value = doc["lookaround_enable"];
-    boolean lookaround_enable = (Value == 1);
-    if (lookaround_enable) timer_lookaround.start();
-    else timer_lookaround.stop();
-    save_config_to_preferences("lookaround_enable", lookaround_enable);
-    Serial.print("lookaround_enable set to: ");
-    Serial.println(lookaround_enable ? "true" : "false");
-  }
-  
-  if (doc.containsKey("lookaround_enable_once")) {
-    lookaround();
-  }
-  
-  if (doc.containsKey("lookaround_delay")) {
-    int Value = doc["lookaround_delay"];
-    timer_lookaround.setinterval(Value * 1000);
-    save_config_to_preferences("lookaround_delay", Value * 1000);
-    Serial.print("lookaround_delay ");
-    Serial.println(Value * 1000);
-  }
-  
-  if (doc.containsKey("lookaround_distance")) {
-    int Value = doc["lookaround_distance"];
-    lookaround_distance = Value;
-    save_config_to_preferences("lookaround_distance", Value);
-    Serial.print("lookaround_distance ");
-    Serial.println(Value);
   }
   
   // ---------------------------------------------------------------------------------
@@ -1051,39 +961,51 @@ if (doc.containsKey("right_jog")) {
   Serial.println(current + Value);
 }
 
+// ---------------------------------------------------------------------------------
+// RADAR CONFIGURATION
+// ---------------------------------------------------------------------------------
+if (doc.containsKey("set_radar_history_size")) {
+  int Value = doc["set_radar_history_size"];
+  if (Value < 1 || Value > 200) {
+    Serial.print("Error: Radar history size must be between 1 and 200. Received: ");
+    Serial.println(Value);
+    client.publish(MQTTChannelToPublish, "{\"error\": \"Radar history size must be 1-200\"}");
+  } else {
+    radar.set_history_size(Value);
+    String response = "{\"radar_history_size\": " + String(Value) + "}";
+    client.publish(MQTTChannelToPublish, response.c_str());
+  }
 }
 
-// ===================================================================================
-// RADAR CHECK
-// ===================================================================================
-
-void check_radar(void) {
-  if (sensorSerial.available()) {
-    String receivedString = sensorSerial.readStringUntil('\n');
-    receivedString.trim();
-    
-    if (receivedString.length() > 0) {
-      if (receivedString.equals("ON") || receivedString.equals("OFF")) {
-        bool currentReading = receivedString.equals("ON");
-        humanPresentHistory[historyIndex] = currentReading;
-        historyIndex = (historyIndex + 1) % HISTORY_SIZE;
-        
-        bool allFalse = true;
-        for (int i = 0; i < HISTORY_SIZE; i++) {
-          if (humanPresentHistory[i]) {
-            allFalse = false;
-            break;
-          }
-        }
-        
-        if (currentReading) {
-          humanPresent_debounced = true;
-        } else if (allFalse) {
-          humanPresent_debounced = false;
-        }
-      }
-    }
+if (doc.containsKey("set_radar_publish_delay")) {
+  int Value = doc["set_radar_publish_delay"];  // in seconds
+  if (Value < 1) {
+    Serial.print("Error: Radar publish delay must be at least 1 second. Received: ");
+    Serial.println(Value);
+    client.publish(MQTTChannelToPublish, "{\"error\": \"Radar publish delay must be >= 1 second\"}");
+  } else {
+    timer_radar.setinterval(Value * 1000);  // Convert to milliseconds
+    Serial.print("Radar publish delay set to: ");
+    Serial.print(Value);
+    Serial.println(" seconds");
+    String response = "{\"radar_publish_delay\": " + String(Value) + "}";
+    client.publish(MQTTChannelToPublish, response.c_str());
   }
+}
+
+if (doc.containsKey("set_radar_range_average")) {
+  int Value = doc["set_radar_range_average"];
+  if (Value < 1 || Value > 100) {
+    Serial.print("Error: Radar range average size must be between 1 and 100. Received: ");
+    Serial.println(Value);
+    client.publish(MQTTChannelToPublish, "{\"error\": \"Radar range average must be 1-100\"}");
+  } else {
+    radar.set_range_average_size(Value);
+    String response = "{\"radar_range_average\": " + String(Value) + "}";
+    client.publish(MQTTChannelToPublish, response.c_str());
+  }
+}
+
 }
 
 // ===================================================================================

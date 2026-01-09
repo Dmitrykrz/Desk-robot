@@ -1,11 +1,4 @@
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# This is old system to store images.
-# It is no longer used
-# Preferences are used instead     
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    
-
-
-ifndef IMAGES_H
+#ifndef IMAGES_H
 #define IMAGES_H
 
 #include <Arduino.h>
@@ -56,7 +49,6 @@ const int lookright[8][16] = {
     {0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0}, 
     {0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0}  
 };
-
 
 
 

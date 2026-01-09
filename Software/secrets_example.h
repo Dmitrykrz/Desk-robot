@@ -1,7 +1,9 @@
+// src/secrets.h
 
 #ifndef SECRETS_H
 #define SECRETS_H
 
+// Include the utility header to get the wificredentials struct definition
 #include "Korzhenevskiy_utils.h" 
 
 // --- MQTT Configuration ---

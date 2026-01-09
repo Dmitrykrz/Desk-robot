@@ -28,7 +28,10 @@ void draw_cat(void) {
 }
 
 void connecttobestwifi(wificredentials networks[], int numNetworks) {
-   
+    // Your existing connecttobestwifi() function code.
+    // The variables 'networks' and 'numNetworks' are now available
+    // because they are passed as parameters.
+    // You must also declare 'ip' as a local variable.
 
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
@@ -76,7 +79,7 @@ void connecttobestwifi(wificredentials networks[], int numNetworks) {
         Serial.println("");
         Serial.println("WiFi connected");
         Serial.println("IP address: ");
-        IPAddress ip = WiFi.localIP(); 
+        IPAddress ip = WiFi.localIP(); // Declare 'ip' here as a local variable
         Serial.println(ip);
     }
 }
@@ -85,10 +88,10 @@ void connecttobestwifi(wificredentials networks[], int numNetworks) {
 
 
 void connecttoMQTT() {
-  if (!client.connected()) {  
+  if (!client.connected()) {  // CHANDED FOM WHILE
     Serial.println("Attempting MQTT connection...");
 
-   
+    //boolean connect (clientID, username, password, willTopic, willQoS, willRetain, willMessage)
     if (client.connect(MQTTclientname, mqtt_user, mqtt_password, MQTTChannelToPublish, 1, false, willMessage)) {
       Serial.println("MQTT connected");
       client.subscribe(MQTTChannelToSubsribe);
