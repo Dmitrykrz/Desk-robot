@@ -94,11 +94,11 @@ PubSubClient client(espClient);
 
 struct AnimationCommand {
   unsigned long t;      // time in ms from animation start
-  char motor;           // 'B' = base, 'L' = left, 'R' = right, 'F' = face
+  char motor;           // 'B' = base, 'L' = left, 'R' = right, 'F' = face, 'D' = face raw data
   int pos;              // target position (for motors)
   int spd;              // speed (-1 = keep previous)
   int acc;              // acceleration (-1 = keep previous)
-  String img;           // image name (for face commands)
+  String img;           // image name or raw data string (for face commands)
 };
 
 AnimationCommand animationCommands[MAX_ANIMATION_COMMANDS];
@@ -436,9 +436,25 @@ void parseAnimation(JsonArray arr) {
     AnimationCommand& ac = animationCommands[animationCommandCount];
     
     ac.t = cmd["ms"].as<unsigned long>();
-    
-    // Check for screen command first
-    if (cmd.containsKey("screen")) {
+
+    // Check for screen_name command (load from preferences)
+    if (cmd.containsKey("screen_name")) {
+      ac.motor = 'F';
+      ac.img = cmd["screen_name"].as<String>();
+      ac.pos = 0;
+      ac.spd = -1;
+      ac.acc = -1;
+    }
+    // Check for screen_data command (raw 128-char image data)
+    else if (cmd.containsKey("screen_data")) {
+      ac.motor = 'D';
+      ac.img = cmd["screen_data"].as<String>();
+      ac.pos = 0;
+      ac.spd = -1;
+      ac.acc = -1;
+    }
+    // Legacy support for "screen" key (treated as name)
+    else if (cmd.containsKey("screen")) {
       ac.motor = 'F';
       ac.img = cmd["screen"].as<String>();
       ac.pos = 0;
@@ -500,10 +516,29 @@ void tickAnimation() {
     
     // Execute this command
     if (ac.motor == 'F') {
-      // Face command - load image from preferences
+      // Face command - load image from preferences by name
       loadImageFromPreferences(ac.img);
       Serial.print("Animation: face -> ");
       Serial.println(ac.img);
+    }
+    else if (ac.motor == 'D') {
+      // Face command - display raw image data
+      String imageString = ac.img;
+      if (imageString.length() == 128) {
+        int Image[8][16];
+        int index = 0;
+        for (int row = 0; row < 8; row++) {
+          for (int col = 0; col < 16; col++) {
+            Image[row][col] = imageString.charAt(index) - '0';
+            index++;
+          }
+        }
+        draw_image(Image);
+        Serial.println("Animation: face -> raw data");
+      } else {
+        Serial.print("Animation error: raw image data must be 128 chars, got ");
+        Serial.println(imageString.length());
+      }
     }
     else {
       // Motor command
@@ -1035,11 +1070,12 @@ void draw_image(const int image[8][16]) {
   }
   
   // Draw
-  ledmatrix.clear();
   for (uint8_t y = 0; y < 8; y++) {
     for (uint8_t x = 0; x < 16; x++) {
       if (image_to_display[x][y] == 1) {
         ledmatrix.drawPixel(x, y + 1, 255);
+      } else {
+        ledmatrix.drawPixel(x, y + 1, 0);
       }
     }
   }

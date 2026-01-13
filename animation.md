@@ -20,7 +20,7 @@ Send via MQTT to topic `desk_robot`:
     {"ms": 0, "motor": "base", "pos": 200, "spd": 400, "acc": 800},
     {"ms": 0, "motor": "left", "pos": 100, "spd": 600, "acc": 1200},
     {"ms": 500, "motor": "left", "pos": -100},
-    {"ms": 1000, "screen": "happy"}
+    {"ms": 1000, "screen_name": "happy"}    
   ]
 }
 ```
@@ -42,7 +42,11 @@ Send via MQTT to topic `desk_robot`:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `ms` | Yes | Time in milliseconds from animation start |
-| `screen` | Yes | Image name saved in Preferences |
+| `screen` | Yes (or use `screen_name` or `screen_data`) | Image name saved in Preferences (legacy) |
+| `screen_name` | Yes (or use `screen` or `screen_data`) | Image name saved in Preferences |
+| `screen_data` | Yes (or use `screen` or `screen_name`) | Raw 128-character image data string (8×16, `0` or `1`) |
+
+**Note**: Use either `screen`/`screen_name` (to load saved image) OR `screen_data` (to display raw data without saving).
 
 ## Behavior
 
@@ -107,10 +111,12 @@ Immediately halts animation and all motors.
 
 ### Display image directly
 
-Send 128-character string (8 rows × 16 columns, `0` or `1`):
-```json
-{"image": "0010000000001000010100000000010101010000000001010010000000001000000000000000000000000000000000000000000000010000000001000001111111110000"}
-```
+Send 128-character string (8 rows × 16 columns, `0` or `1`): must be 128 long
+
+example of smile face:
+{"image":"00100000000001000101000000001010010100000000101001010000000010100010000000000100000000000000000000001000000100000000011111100000"}
+example sad face:
+{"image":"00100000000001000101000000001010010100000000101000100000000001000000000000000000000001111110000000001100001100000001000000001000"}
 
 ### Save current image to storage
 ```json
@@ -150,6 +156,17 @@ When enabled, publishes `{"human": 1}` or `{"human": 0}` on detection changes.
 | `{"command": "reset"}` | Restart the ESP32 |
 
 ## Example Animations
+
+### Animation with raw image data (no saving required)
+```json
+{
+  "animation": [
+    {"ms": 0, "screen_data": "00100000000001000101000000001010010100000000101001010000000010100010000000000100000000000000000000001000000100000000011111100000"},
+    {"ms": 500, "screen_data": "00100000000001000101000000001010010100000000101000100000000001000000000000000000000001111110000000001100001100000001000000001000"},
+    {"ms": 1000, "screen_name": "smile1"}
+  ]
+}
+```
 
 ### Simple wave
 ```json
